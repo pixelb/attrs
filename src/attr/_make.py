@@ -77,6 +77,7 @@ def attrib(
     cmp=None,
     hash=None,
     init=True,
+    convert=None,
     metadata=None,
     type=None,
     converter=None,
@@ -187,7 +188,6 @@ def attrib(
     .. versionadded:: 18.1.0
        ``factory=f`` is syntactic sugar for ``default=attr.Factory(f)``.
     .. versionadded:: 18.2.0 *kw_only*
-    .. versionchanged:: 19.2.0 *convert* keyword argument removed
     .. versionchanged:: 19.2.0 *repr* also accepts a custom callable.
     .. deprecated:: 19.2.0 *cmp* Removal on or after 2021-06-01.
     .. versionadded:: 19.2.0 *eq* and *order*
@@ -198,6 +198,20 @@ def attrib(
         raise TypeError(
             "Invalid value for hash.  Must be True, False, or None."
         )
+
+    if convert is not None:
+        if converter is not None:
+            raise RuntimeError(
+                "Can't pass both `convert` and `converter`.  "
+                "Please use `converter` only."
+            )
+        warnings.warn(
+            "The `convert` argument is deprecated in favor of `converter`.  "
+            "It will be removed after 2019/01.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        converter = convert
 
     if factory is not None:
         if default is not NOTHING:
@@ -1774,6 +1788,7 @@ class Attribute(object):
         cmp,  # XXX: unused, remove along with other cmp code.
         hash,
         init,
+        convert=None,
         metadata=None,
         type=None,
         converter=None,
@@ -1788,6 +1803,20 @@ class Attribute(object):
 
         # Despite the big red warning, people *do* instantiate `Attribute`
         # themselves.
+        if convert is not None:
+            if converter is not None:
+                raise RuntimeError(
+                    "Can't pass both `convert` and `converter`.  "
+                    "Please use `converter` only."
+                )
+            warnings.warn(
+                "The `convert` argument is deprecated in favor of `converter`."
+                "  It will be removed after 2019/01.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            converter = convert
+
         bound_setattr("name", name)
         bound_setattr("default", default)
         bound_setattr("validator", validator)
@@ -1811,6 +1840,16 @@ class Attribute(object):
     def __setattr__(self, name, value):
         raise FrozenInstanceError()
 
+    @property
+    def convert(self):
+        warnings.warn(
+            "The `convert` attribute is deprecated in favor of `converter`.  "
+            "It will be removed after 2019/01.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.converter
+
     @classmethod
     def from_counting_attr(cls, name, ca, type=None):
         # type holds the annotated value. deal with conflicts:
@@ -1829,6 +1868,7 @@ class Attribute(object):
                 "validator",
                 "default",
                 "type",
+                "convert",
             )  # exclude methods and deprecated alias
         }
         return cls(
@@ -1903,6 +1943,7 @@ _a = [
         init=True,
     )
     for name in Attribute.__slots__
+    if name != "convert"  # XXX: remove once `convert` is gone
 ]
 
 Attribute = _add_hash(
